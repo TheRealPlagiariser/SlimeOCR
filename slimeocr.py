@@ -16,7 +16,7 @@ import ctypes
 import threading
 import keyboard
 
-interval_between_clicks= 1.0
+interval_between_clicks= 0.5
 IMAGE_PATH = "images"
 WINDOW_TITLE = "Legend of Slime"
 
@@ -45,6 +45,12 @@ def capture_window():
     try:
         window = gw.getWindowsWithTitle(WINDOW_TITLE)[0]
         if window:
+            if window.isMinimized or window.left < 0 or window.top < 0:
+                # Window is minimized or not in the expected position
+                window.restore()  # Attempt to restore the window from a minimized state
+                window.activate()  # Bring the window to the front
+                logging.info("Window reactivated and restored.")
+
             logging.info(f"Window position: {window.left}, {window.top}, {window.width}, {window.height}")
             return window
         else:

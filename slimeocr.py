@@ -16,11 +16,37 @@ import ctypes
 import threading
 import keyboard
 
-interval_between_clicks= 0.5
+interval_between_clicks= 1.0
 IMAGE_PATH = "images"
-WINDOW_TITLE = "Legend of Slime"
+WINDOW_TITLE = "SlimerinoLegenderino"
 
 logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO, datefmt='%d-%m-%Y %H:%M:%S')
+
+def image_path(filename):
+    return f"{IMAGE_PATH}/{filename}"
+
+idle_chest_icon = image_path("idle_chest.png")
+obtain_bonus_button = image_path("obtain_bonus_button.png")
+free_button_icon = image_path("free_button.png")
+ok_main_button_icon = image_path("ok_main_button.png")
+ok_after_free_button_icon = image_path("ok_after_free_button.png")
+blessings_icon = image_path("blessings.png")
+receive_blessing = image_path("receive_blessing.png")
+close_blessing_button = image_path("close_blessing_button.png")
+building_notification_icon = image_path("building_notification.png")
+building_icon = image_path("building.png")
+loot_button = image_path("loot_button.png")
+receive_all_button = image_path("receive_all_button.png")
+tap_to_continue = image_path("tap_to_continue.png")
+production_boost_enabled = image_path("production_boost_enabled.png")
+close_production_boost_button = image_path("close_production_boost_button.png")
+loot_back_button = image_path("loot_back_button.png")
+building_close_button = image_path("building_close_button.png")
+add_one_hour_button = image_path("add_one_hour_button.png")
+ok_looting_level_up_button = image_path("ok_looting_level_up_button.png")
+close_looting_level_up_rewards_button = image_path("close_looting_level_up_rewards_button.png")
+close_defeat_button = image_path("close_defeat_button.png")
+
 
 def listen_for_esc():
     keyboard.wait('esc')
@@ -45,8 +71,11 @@ def capture_window():
     try:
         window = gw.getWindowsWithTitle(WINDOW_TITLE)[0]
         if window:
-            if window.isMinimized or window.left < 0 or window.top < 0:
-                # Window is minimized or not in the expected position
+            if window.left <= 0 or window.top <= 0:
+                logging.info(f"Window position: {window.left}, {window.top}, {window.width}, {window.height}")
+                # logging.warning("Window position is incorrect. Exiting script.")
+                # exit(1)
+            if window.isMinimized or window.left <= 0 or window.top <= 0:
                 window.restore()  # Attempt to restore the window from a minimized state
                 window.activate()  # Bring the window to the front
                 logging.info("Window reactivated and restored.")
@@ -179,36 +208,15 @@ def get_loot():
         found_image_icon(building_close_button)
      
 
-def image_path(filename):
-    return f"{IMAGE_PATH}/{filename}"
+def run_slimeocr():
+
+    time.sleep(5.0)
+
+    listener_thread = threading.Thread(target=listen_for_esc)
+    listener_thread.start()
+
+    monitor_screen_for_images(interval_monitoring=60.0)
 
 
-time.sleep(5.0)
-
-listener_thread = threading.Thread(target=listen_for_esc)
-listener_thread.start()
-
-idle_chest_icon = image_path("idle_chest.png")
-obtain_bonus_button = image_path("obtain_bonus_button.png")
-free_button_icon = image_path("free_button.png")
-ok_main_button_icon = image_path("ok_main_button.png")
-ok_after_free_button_icon = image_path("ok_after_free_button.png")
-blessings_icon = image_path("blessings.png")
-receive_blessing = image_path("receive_blessing.png")
-close_blessing_button = image_path("close_blessing_button.png")
-building_notification_icon = image_path("building_notification.png")
-building_icon = image_path("building.png")
-loot_button = image_path("loot_button.png")
-receive_all_button = image_path("receive_all_button.png")
-tap_to_continue = image_path("tap_to_continue.png")
-production_boost_enabled = image_path("production_boost_enabled.png")
-close_production_boost_button = image_path("close_production_boost_button.png")
-loot_back_button = image_path("loot_back_button.png")
-building_close_button = image_path("building_close_button.png")
-add_one_hour_button = image_path("add_one_hour_button.png")
-ok_looting_level_up_button = image_path("ok_looting_level_up_button.png")
-close_looting_level_up_rewards_button = image_path("close_looting_level_up_rewards_button.png")
-close_defeat_button = image_path("close_defeat_button.png")
-
-
-monitor_screen_for_images(interval_monitoring=60.0)
+if __name__ == "__main__":
+    run_slimeocr()

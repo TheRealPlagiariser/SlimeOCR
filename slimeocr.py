@@ -8,22 +8,28 @@ import pyautogui
 import time
 import pygetwindow as gw
 import pyautogui
+import time
+import logging
+import gc
 
 interval_between_clicks= 1.5
 IMAGE_PATH = "images"
 WINDOW_TITLE = "Legend of Slime"
 
+logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO, datefmt='%d-%m-%Y %H:%M:%S')
+
+
 def capture_window():
     try:
         window = gw.getWindowsWithTitle(WINDOW_TITLE)[0]
         if window:
-            window.activate()  # Optional: Bring the window to the front
+            # window.activate()  # Optional: Bring the window to the front
             return window
         else:
-            print(f"Window titled '{WINDOW_TITLE}' not found.")
+            logging.warning(f"Window titled '{WINDOW_TITLE}' not found.")
             return None
     except IndexError:
-        print(f"No window titled '{WINDOW_TITLE}' found.")
+        logging.error(f"No window titled '{WINDOW_TITLE}' found.")
         return None
 
 def find_and_click_image_on_screen(template_path, click_all_instances=False, post_click_delay=1.0, exclusion_margin=5):
@@ -74,21 +80,29 @@ def find_and_click_image_on_screen(template_path, click_all_instances=False, pos
 def found_image_icon(image_icon, click_all_instances=False):
     found_image = find_and_click_image_on_screen(image_icon, click_all_instances=click_all_instances)
     if found_image:
-        print(f"Found {image_icon} and clicked.")
+        logging.info(f" Found {image_icon} and clicked.")
         time.sleep(interval_between_clicks)
     
     return found_image
 
-def monitor_screen_for_images(interval_monitoring=5.0):
+def monitor_screen_for_images(interval_monitoring=5.0, loot_interval=3600):
+    last_loot_time = 0 
+
     try:
         while True:
             get_idle_chest()
             get_blessings()
-            get_loot()
+
+            current_time = time.time()
+            if current_time - last_loot_time > loot_interval:
+                get_loot()
+                last_loot_time = current_time
 
             time.sleep(interval_monitoring)
+            gc.collect()
+
     except KeyboardInterrupt:
-        print("Monitoring stopped.")
+        logging.debug("Monitoring stopped.")
 
 def get_idle_chest():
     if found_image_icon(idle_chest_icon):
@@ -108,7 +122,7 @@ def get_loot():
             if found_image_icon(receive_all_button):
                 found_image_icon(tap_to_continue)
             if found_image_icon(production_boost_enabled):
-                # missing add hours icon
+                found_image_icon(add_one_hour_button)
                 found_image_icon(close_production_boost_button)
             # missing production_boost_disabled icon
         if found_image_icon(loot_back_button):
@@ -119,7 +133,7 @@ def image_path(filename):
     return f"{IMAGE_PATH}/{filename}"
 
 
-time.sleep(2.0)
+time.sleep(10.0)
 
 idle_chest_icon = image_path("idle_chest.png")
 obtain_bonus_button = image_path("obtain_bonus_button.png")
@@ -129,6 +143,7 @@ ok_after_free_button_icon = image_path("ok_after_free_button.png")
 blessings_icon = image_path("blessings.png")
 receive_blessing = image_path("receive_blessing.png")
 close_blessing_button = image_path("close_blessing_button.png")
+building_notification_icon = image_path("building_notification.png")
 building_icon = image_path("building.png")
 loot_button = image_path("loot_button.png")
 receive_all_button = image_path("receive_all_button.png")
@@ -137,6 +152,7 @@ production_boost_enabled = image_path("production_boost_enabled.png")
 close_production_boost_button = image_path("close_production_boost_button.png")
 loot_back_button = image_path("loot_back_button.png")
 building_close_button = image_path("building_close_button.png")
+add_one_hour_button = image_path("add_one_hour_button.png")
 
 
-monitor_screen_for_images(interval_monitoring=10.0)
+monitor_screen_for_images(interval_monitoring=60.0)

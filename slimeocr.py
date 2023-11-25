@@ -38,6 +38,7 @@ def find_and_click_image_on_screen(template_path, click_all_instances=False, pos
 
     window = capture_window()
     if not window:
+        logging.error("Unable to capture the window.")
         return False
 
     x, y, width, height = window.left, window.top, window.width, window.height
@@ -57,10 +58,16 @@ def find_and_click_image_on_screen(template_path, click_all_instances=False, pos
 
         # Adjust the coordinates relative to the window
         center_x, center_y = max_loc[0] + w//2 + x, max_loc[1] + h//2 + y
-        pyautogui.moveTo(center_x, center_y)
-        pyautogui.click()
+        pyautogui.moveTo(center_x, center_y, duration=0.5)  # Slow down mouse movement
 
-        found = True
+        # Check if cursor is at the intended position
+        if pyautogui.position() == (center_x, center_y):
+            time.sleep(0.1)  # Short delay before click
+            pyautogui.click()
+            found = True
+        else:
+            logging.warning("Cursor not at the intended position. Click skipped.")
+
         time.sleep(interval_between_clicks)
 
         # Exclude the area around the detected button

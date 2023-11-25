@@ -11,12 +11,31 @@ import pyautogui
 
 interval_between_clicks= 1.5
 IMAGE_PATH = "images"
+WINDOW_TITLE = "Legend of Slime"
+
+def capture_window():
+    try:
+        window = gw.getWindowsWithTitle(WINDOW_TITLE)[0]
+        if window:
+            window.activate()  # Optional: Bring the window to the front
+            return window
+        else:
+            print(f"Window titled '{WINDOW_TITLE}' not found.")
+            return None
+    except IndexError:
+        print(f"No window titled '{WINDOW_TITLE}' found.")
+        return None
 
 def find_and_click_image_on_screen(template_path, click_all_instances=False, post_click_delay=1.0, exclusion_margin=5):
     template = cv2.imread(template_path, 0)
     w, h = template.shape[::-1]
 
-    screen = pyautogui.screenshot()
+    window = capture_window()
+    if not window:
+        return False
+
+    x, y, width, height = window.left, window.top, window.width, window.height
+    screen = pyautogui.screenshot(region=(x, y, width, height))
     screen = cv2.cvtColor(np.array(screen), cv2.COLOR_RGB2BGR)
     screen_gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
 
@@ -30,9 +49,11 @@ def find_and_click_image_on_screen(template_path, click_all_instances=False, pos
         if max_val < threshold:
             break
 
-        center_x, center_y = max_loc[0] + w//2, max_loc[1] + h//2
+        # Adjust the coordinates relative to the window
+        center_x, center_y = max_loc[0] + w//2 + x, max_loc[1] + h//2 + y
         pyautogui.moveTo(center_x, center_y)
         pyautogui.click()
+
         found = True
         time.sleep(interval_between_clicks)
 

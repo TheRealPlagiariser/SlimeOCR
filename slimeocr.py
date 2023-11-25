@@ -168,8 +168,9 @@ def get_loot():
                 found_image_icon(add_one_hour_button)
                 found_image_icon(close_production_boost_button)
             # missing production_boost_disabled icon
-        if found_image_icon(loot_back_button):
-            found_image_icon(building_close_button)
+        found_image_icon(loot_back_button)
+        found_image_icon(loot_back_button)
+        found_image_icon(building_close_button)
      
 
 def image_path(filename):

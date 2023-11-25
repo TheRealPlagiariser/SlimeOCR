@@ -12,12 +12,28 @@ import time
 import logging
 import gc
 from mss import mss
+import ctypes
+import threading
+import keyboard
 
-interval_between_clicks= 1.5
+interval_between_clicks= 1.0
 IMAGE_PATH = "images"
 WINDOW_TITLE = "Legend of Slime"
 
 logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO, datefmt='%d-%m-%Y %H:%M:%S')
+
+def listen_for_esc():
+    keyboard.wait('esc')
+    unblock_mouse_input()
+    print("Mouse input unblocked! Press ESC again to exit.")
+    keyboard.wait('esc')
+    exit(0)  # Exit the script if ESC is pressed again
+
+def block_mouse_input():
+    ctypes.windll.user32.BlockInput(True)  # Block input
+
+def unblock_mouse_input():
+    ctypes.windll.user32.BlockInput(False)  # Unblock input
 
 def capture_with_mss(x, y, width, height):
     with mss() as sct:
@@ -39,56 +55,61 @@ def capture_window():
         return None
 
 def find_and_click_image_on_screen(template_path, click_all_instances=False, post_click_delay=1.0, exclusion_margin=5):
-    template = cv2.imread(template_path, 0)
-    w, h = template.shape[::-1]
+    try:
+        block_mouse_input()
+        template = cv2.imread(template_path, cv2.IMREAD_GRAYSCALE)
+        w, h = template.shape[::-1]
 
-    window = capture_window()
-    if not window:
-        logging.error("Unable to capture the window.")
-        return False
+        window = capture_window()
+        if not window:
+            logging.error("Unable to capture the window.")
+            return False
 
-    x, y, width, height = window.left, window.top, window.width, window.height
-    sct_img = capture_with_mss(x, y, width, height)
-    screen = np.array(sct_img)
-    screen = cv2.cvtColor(screen, cv2.COLOR_BGR2RGB) 
-    screen_gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
+        x, y, width, height = window.left, window.top, window.width, window.height
+        sct_img = capture_with_mss(x, y, width, height)
+        screen = np.array(sct_img)
+        screen = cv2.cvtColor(screen, cv2.COLOR_BGR2RGB) 
+        screen_gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
 
-    threshold = 0.82
-    found = False
+        threshold = 0.82
+        found = False
 
-    while True:
-        res = cv2.matchTemplate(screen_gray, template, cv2.TM_CCOEFF_NORMED)
-        _, max_val, _, max_loc = cv2.minMaxLoc(res)
+        while True:
+            res = cv2.matchTemplate(screen_gray, template, cv2.TM_CCOEFF_NORMED)
+            _, max_val, _, max_loc = cv2.minMaxLoc(res)
 
-        logging.info(f"Template match value: {max_val}")
-        if max_val < threshold:
-            break
+            logging.info(f"Template match value: {max_val}")
+            if max_val < threshold:
+                break
 
-        # Adjust the coordinates relative to the window
-        center_x, center_y = max_loc[0] + w//2 + x, max_loc[1] + h//2 + y
-        pyautogui.moveTo(center_x, center_y, duration=0.5)  # Slow down mouse movement
+            # Adjust the coordinates relative to the window
+            center_x, center_y = max_loc[0] + w//2 + x, max_loc[1] + h//2 + y
+            pyautogui.moveTo(center_x, center_y, duration=0.5)  # Slow down mouse movement
 
-        # Check if cursor is at the intended position
-        if pyautogui.position() == (center_x, center_y):
-            time.sleep(0.1)  # Short delay before click
-            pyautogui.click()
-            found = True
-        else:
-            logging.warning("Cursor not at the intended position. Click skipped.")
+            # Check if cursor is at the intended position
+            if pyautogui.position() == (center_x, center_y):
+                time.sleep(0.1)  # Short delay before click
+                pyautogui.click()
+                found = True
+            else:
+                logging.warning("Cursor not at the intended position. Click skipped.")
 
-        time.sleep(interval_between_clicks)
+            time.sleep(interval_between_clicks)
 
-        # Exclude the area around the detected button to avoid repeated clicks
-        x_start = max(max_loc[0] - exclusion_margin, 0)
-        y_start = max(max_loc[1] - exclusion_margin, 0)
-        x_end = min(max_loc[0] + w + exclusion_margin, screen_gray.shape[1])
-        y_end = min(max_loc[1] + h + exclusion_margin, screen_gray.shape[0])
-        screen_gray[y_start:y_end, x_start:x_end] = 0
+            # Exclude the area around the detected button to avoid repeated clicks
+            x_start = max(max_loc[0] - exclusion_margin, 0)
+            y_start = max(max_loc[1] - exclusion_margin, 0)
+            x_end = min(max_loc[0] + w + exclusion_margin, screen_gray.shape[1])
+            y_end = min(max_loc[1] + h + exclusion_margin, screen_gray.shape[0])
+            screen_gray[y_start:y_end, x_start:x_end] = 0
 
-        if not click_all_instances:
-            break
+            if not click_all_instances:
+                break
 
-        time.sleep(post_click_delay)
+            time.sleep(post_click_delay)
+
+    finally:
+        unblock_mouse_input()
 
     return found
 
@@ -156,6 +177,9 @@ def image_path(filename):
 
 
 time.sleep(5.0)
+
+listener_thread = threading.Thread(target=listen_for_esc)
+listener_thread.start()
 
 idle_chest_icon = image_path("idle_chest.png")
 obtain_bonus_button = image_path("obtain_bonus_button.png")

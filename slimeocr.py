@@ -11,6 +11,7 @@ import pyautogui
 import time
 import logging
 import gc
+from mss import mss
 
 interval_between_clicks= 1.5
 IMAGE_PATH = "images"
@@ -18,12 +19,17 @@ WINDOW_TITLE = "Legend of Slime"
 
 logging.basicConfig(filename='app.log', filemode='w', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO, datefmt='%d-%m-%Y %H:%M:%S')
 
+def capture_with_mss(x, y, width, height):
+    with mss() as sct:
+        monitor = {"top": y, "left": x, "width": width, "height": height}
+        sct_img = sct.grab(monitor)
+        return sct_img
 
 def capture_window():
     try:
         window = gw.getWindowsWithTitle(WINDOW_TITLE)[0]
         if window:
-            # window.activate()  # Optional: Bring the window to the front
+            logging.info(f"Window position: {window.left}, {window.top}, {window.width}, {window.height}")
             return window
         else:
             logging.warning(f"Window titled '{WINDOW_TITLE}' not found.")
@@ -42,17 +48,19 @@ def find_and_click_image_on_screen(template_path, click_all_instances=False, pos
         return False
 
     x, y, width, height = window.left, window.top, window.width, window.height
-    screen = pyautogui.screenshot(region=(x, y, width, height))
-    screen = cv2.cvtColor(np.array(screen), cv2.COLOR_RGB2BGR)
+    sct_img = capture_with_mss(x, y, width, height)
+    screen = np.array(sct_img)
+    screen = cv2.cvtColor(screen, cv2.COLOR_BGR2RGB) 
     screen_gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
 
-    threshold = 0.8
+    threshold = 0.82
     found = False
 
     while True:
         res = cv2.matchTemplate(screen_gray, template, cv2.TM_CCOEFF_NORMED)
         _, max_val, _, max_loc = cv2.minMaxLoc(res)
 
+        logging.info(f"Template match value: {max_val}")
         if max_val < threshold:
             break
 
@@ -70,7 +78,7 @@ def find_and_click_image_on_screen(template_path, click_all_instances=False, pos
 
         time.sleep(interval_between_clicks)
 
-        # Exclude the area around the detected button
+        # Exclude the area around the detected button to avoid repeated clicks
         x_start = max(max_loc[0] - exclusion_margin, 0)
         y_start = max(max_loc[1] - exclusion_margin, 0)
         x_end = min(max_loc[0] + w + exclusion_margin, screen_gray.shape[1])
@@ -85,6 +93,7 @@ def find_and_click_image_on_screen(template_path, click_all_instances=False, pos
     return found
 
 def found_image_icon(image_icon, click_all_instances=False):
+    logging.info(f" Matching {image_icon}")
     found_image = find_and_click_image_on_screen(image_icon, click_all_instances=click_all_instances)
     if found_image:
         logging.info(f" Found {image_icon} and clicked.")
@@ -97,6 +106,7 @@ def monitor_screen_for_images(interval_monitoring=5.0, loot_interval=3600):
 
     try:
         while True:
+            close_defeat_screen()
             get_idle_chest()
             get_blessings()
 
@@ -110,6 +120,9 @@ def monitor_screen_for_images(interval_monitoring=5.0, loot_interval=3600):
 
     except KeyboardInterrupt:
         logging.debug("Monitoring stopped.")
+
+def close_defeat_screen():
+    found_image_icon(close_defeat_button)
 
 def get_idle_chest():
     if found_image_icon(idle_chest_icon):
@@ -128,6 +141,8 @@ def get_loot():
         if found_image_icon(loot_button):
             if found_image_icon(receive_all_button):
                 found_image_icon(tap_to_continue)
+                if found_image_icon(ok_looting_level_up_button):
+                    found_image_icon(close_looting_level_up_rewards_button)
             if found_image_icon(production_boost_enabled):
                 found_image_icon(add_one_hour_button)
                 found_image_icon(close_production_boost_button)
@@ -140,7 +155,7 @@ def image_path(filename):
     return f"{IMAGE_PATH}/{filename}"
 
 
-time.sleep(10.0)
+time.sleep(5.0)
 
 idle_chest_icon = image_path("idle_chest.png")
 obtain_bonus_button = image_path("obtain_bonus_button.png")
@@ -160,6 +175,9 @@ close_production_boost_button = image_path("close_production_boost_button.png")
 loot_back_button = image_path("loot_back_button.png")
 building_close_button = image_path("building_close_button.png")
 add_one_hour_button = image_path("add_one_hour_button.png")
+ok_looting_level_up_button = image_path("ok_looting_level_up_button.png")
+close_looting_level_up_rewards_button = image_path("close_looting_level_up_rewards_button.png")
+close_defeat_button = image_path("close_defeat_button.png")
 
 
 monitor_screen_for_images(interval_monitoring=60.0)
